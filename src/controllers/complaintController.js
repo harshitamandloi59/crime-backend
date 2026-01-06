@@ -17,24 +17,71 @@ exports.createComplaint = async (req, res) => {
   }
 };
 
+// exports.getComplaints = async (req, res) => {
+//   const complaints = await Complaint.find().sort({ createdAt: -1 });
+//   res.json(complaints);
+// };
 exports.getComplaints = async (req, res) => {
-  const complaints = await Complaint.find().sort({ createdAt: -1 });
-  res.json(complaints);
+  try {
+    let complaints;
+
+    if (req.user.role === "admin") {
+      complaints = await Complaint.find()
+        .populate("createdBy", "name email department")
+        .sort({ createdAt: -1 });
+    } else {
+      complaints = await Complaint.find({ createdBy: req.user._id }).sort({
+        createdAt: -1,
+      });
+    }
+
+    res.json(complaints);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.updateStatus = async (req, res) => {
-  const { status } = req.body;
+  try {
+    const { status } = req.body;
 
-  const complaint = await Complaint.findByIdAndUpdate(
-    req.params.id,
-    { status },
-    { new: true }
-  );
+    const allowedStatus = ["Pending", "In Progress", "Resolved", "Rejected"];
 
-  res.json(complaint);
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    complaint.status = status;
+    await complaint.save();
+
+    res.json({
+      message: "Status updated successfully",
+      complaint,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
+
 exports.deleteComplaint = async (req, res) => {
-  await Complaint.findByIdAndDelete(req.params.id);
-  res.json({ message: "Complaint deleted" });
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    await complaint.deleteOne();
+
+    res.json({ message: "Complaint deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

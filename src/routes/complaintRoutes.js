@@ -13,6 +13,7 @@ const { protect, adminOnly } = require("../middleware/authMiddleware");
 router.post("/",protect, createComplaint);
 router.get("/", protect, getComplaints);
 router.patch("/:id/status", protect, updateStatus);
+
 router.delete("/:id", protect, adminOnly, deleteComplaint);
 
 module.exports = router;
